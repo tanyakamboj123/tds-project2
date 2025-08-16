@@ -29,8 +29,8 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from handlers.url_scraper import extract_url, scrape_url
-from handlers.file_handler2 import load_file, summarize_context
-#from handlers.file_handler import load_file, extract_pdf_text, summarize_dataframes_with_text
+#from handlers.file_handler2 import load_file, summarize_context
+from handlers.file_handler import load_file, extract_pdf_text, summarize_dataframes_with_text
 #from handlers.pdf_handler import load_pdf
 import tempfile
 from fastapi import UploadFile
@@ -75,15 +75,15 @@ def handle_question(question: str, file: UploadFile = None):
                 tmp_path = tmp.name
 
             load_result = load_file(tmp_path)
-            context = summarize_context(load_result)
+            context = summarize_dataframes_with_text(load_result)
         prompt = prompt = (
         "You are an expert and precise python data analyst.\n\n"
         "Task:\n"
         "- The user will give you a question can be related to url and any type of file.\n"
-        "- Break the task into smaller sub-questions and extract the metadata.\n"
+        "- Break the task into smaller sub-questions.\n"
         "- Ignore the irrelevant data while extraction.\n"
         "- If a URL is provided, extract data using requests + BeautifulSoup or pandas.read_html() or any other libraries.\n"
-        "- Extract the data which is relevant to the question being asked and ignore the unimportant details.\n"
+        #"- Extract the data which is relevant to the question being asked and ignore the unimportant details.\n"
         "- If a file is provided either it is local extract the data from the file.\n"
         "- Never respond with text; always write valid Python code that processes the provided context.\n"
         "- For PDFs, use the libraries suitable for the question being asked.\n"
@@ -112,15 +112,17 @@ def handle_question(question: str, file: UploadFile = None):
         f"Data from webpage:\n{context if context else ''}\n\n"
         "Before numeric operations like .corr(), .plot(), or .astype(), always:\n"
         "- Convert columns using pd.to_numeric(..., errors='coerce'), OR\n"
-        "- Use .str.extract(r'(\\d+(?:\\.\\d+)?)') to extract numeric parts from strings like '24RK'\n"
+        "- Use .str.extract(r'(\\d+(?:\\.\\d+)?)') to extract numeric parts from strings like '24RK' or 'T2257844554' if in present in another format.\n"
         "- Drop missing (NaN) values with .dropna() before computing\n"
         "- convert strings to numeric using pd.to_numeric(..., errors='coerce').\n"
         "- When handling mixed data (numbers + text), use pd.to_numeric(errors=\"coerce\") instead of astype(float).\n\n"
         "- Use try/except to guard risky code like .iloc, .astype, .droplevel.\n"
         "- Before calling .astype(float), always verify if column is numeric or use pd.to_numeric(..., errors='coerce').\n\n"
+        "- Ignore special characters like $,# etc in numeric columns before conversion.\n"
+        
         "- If any error gets , send back that error to llm to solve the question again.\n\n"
         "- take maximum 3 minutes to answer the question.\n\n"
-        "Strictly follow all the instructions mentioned above.\n\n"
+        "Strictly read all the instructions mentioned above before solving the question.\n\n"
         "Now generate Python code to answer:\n\n"
         f"{question}"
     )
