@@ -21,3 +21,5 @@ venv/
 *.pdf
 *.xlsx
 *.csv
+*.png
+*.tsv
