@@ -95,7 +95,7 @@ async def analyze(
             tmp_files.append({"name": uf.filename, "path": tmp_path})
 
         # Call your handler with the question AND the files list
-        result = handle_question(q, files=tmp_files)  # <-- modify handler signature to accept list
+        result = handle_question(q, file=tmp_files)  # <-- modify handler signature to accept list
 
         # Always return JSON
         return JSONResponse(result)
