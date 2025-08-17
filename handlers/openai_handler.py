@@ -108,7 +108,7 @@ def handle_question(question: str, file: UploadFile = None):
         "- Only answers to be printed with no description.\n"
         "- The **last line** of your code must be:\n"
         "    print(json.dumps(result))\n\n"
-        "- Do not make arrays of different answers of questions asked."
+        "- Do not make arrays of different answers you got from different questions asked."
 
         "If a plot is requested , make this chart if asked only:\n"
         "- Use matplotlib\n"

@@ -108,3 +108,4 @@ matplotlib==3.8.4
 
 openai==0.27.0
 statsmodels==0.13.5
+easyocr==1.6.2
