@@ -102,3 +102,10 @@ async def analyze(
 
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+
+# This part allows you to run the app with `python app.py` directly
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
