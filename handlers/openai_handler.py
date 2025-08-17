@@ -21,7 +21,6 @@ import os
 import io
 import json
 import traceback
-import google.generativeai as genai
 from dotenv import load_dotenv
 import numpy as np
 import matplotlib.pyplot as plt
@@ -29,8 +28,8 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from handlers.url_scraper import extract_url, scrape_url
-#from handlers.file_handler2 import load_file, summarize_context
-from handlers.file_handler import load_file, extract_pdf_text, summarize_dataframes_with_text
+from handlers.file_handler2 import load_file, summarize_context
+#from handlers.file_handler import load_file, extract_pdf_text, summarize_dataframes_with_text
 #from handlers.pdf_handler import load_pdf
 import tempfile
 from fastapi import UploadFile
@@ -40,7 +39,7 @@ load_dotenv()
 api_key = os.getenv("AIPIPE_TOKEN")
 base_url = "https://aipipe.org/openai/v1"
 
-MODEL_NAME = "gpt-4o-mini"
+MODEL_NAME = "gpt-4.1-nano"
 
 def extract_url(text):
     match = re.search(r'(https?://[^\s]+)', text)
@@ -73,7 +72,7 @@ def handle_question(question: str, file: UploadFile = None):
                 tmp_path = tmp.name
 
             load_result = load_file(tmp_path)
-            context = summarize_dataframes_with_text(load_result)
+            context = summarize_context(load_result)
         prompt = prompt = (
         "You are an expert and precise python data analyst.\n\n"
         "Task:\n"
@@ -93,18 +92,27 @@ def handle_question(question: str, file: UploadFile = None):
         "- Answer all sub-questions using code.\n"
         "- while dealing with files consider the statement of the question regardless of the upper or lower case of the column names.\n"
         "- Your final output MUST be stored in a variable called `result`.\n"
+        "-For parquet files:"
+            "When you need counts of rows in parquet files:" 
+              "use `parquet_metadata(...)` instead of `read_parquet(...)`."
+              "Do not load PDFs, TARs, or JSONs unless explicitly asked."
+              " Always prefer metadata-only queries for large S3 parquet datasets."
+           
         "- For images:\n"
         "    - Use the suitable libraries to deal with the image questions.\n"
         "    - Load the image and understand the question carefully and analyse the image accordingly. And give the answer.\n"
         "    - use easyocr to extract the text and do not use pytesseract.\n\n"
+       
         "Output format:\n"
         "- result must be a Python **list of strings or JSON serializable**\n"
         "- Only answers to be printed with no description.\n"
         "- The **last line** of your code must be:\n"
         "    print(json.dumps(result))\n\n"
+        "- Do not make arrays of different answers of questions asked."
+
         "If a plot is requested , make this chart if asked only:\n"
         "- Use matplotlib\n"
-        "- Save to base64 string as \"data:image/png;base64,...\" and include it in the result array\n"
+        #"- Save to base64 string as \"data:image/png;base64,...\" and include it in the result array\n"
         "- Make sure base64 output is under 10,000 characters\n"
         "- Read the question carefully what is asked then generate the plot.\n\n"
         f"Data from webpage:\n{context if context else ''}\n\n"
@@ -118,8 +126,9 @@ def handle_question(question: str, file: UploadFile = None):
         "- Before calling .astype(float), always verify if column is numeric or use pd.to_numeric(..., errors='coerce').\n\n"
         "- Ignore special characters like $,# etc in numeric columns before conversion.\n"
         
+        "- Reduce variability in the answers, use consistent formatting and rounding.\n"
         "- If any error gets , send back that error to llm to solve the question again.\n\n"
-        "- take maximum 3 minutes to answer the question.\n\n"
+        "- take maximum of 3 minutes to answer the question.\n\n"
         "Strictly read all the instructions mentioned above before solving the question.\n\n"
         "Now generate Python code to answer:\n\n"
         f"{question}"
