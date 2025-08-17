@@ -83,6 +83,24 @@ def load_file(file_path: str) -> List[pd.DataFrame]:
 
     return dataframes
 
+
+import json, re
+
+def safe_json_parse(response_text: str):
+    """Guarantees JSON output from LLM response."""
+    try:
+        return json.loads(response_text)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", response_text, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group())
+            except Exception:
+                pass
+        return {"error": "Response was not valid JSON", "raw": response_text}
+
+
+
 def summarize_dataframes(dfs: List[pd.DataFrame]) -> str:
     summary = []
     for i, df in enumerate(dfs):

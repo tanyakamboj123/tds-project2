@@ -34,13 +34,11 @@ from handlers.file_handler import load_file, extract_pdf_text, summarize_datafra
 #from handlers.pdf_handler import load_pdf
 import tempfile
 from fastapi import UploadFile
-from openai import OpenAI
+
 
 load_dotenv()
-client = OpenAI(
-    api_key=os.getenv("AIPIPE_TOKEN"),
-    base_url="https://aipipe.org/openai/v1"
-)
+api_key = os.getenv("AIPIPE_TOKEN")
+base_url = "https://aipipe.org/openai/v1"
 
 MODEL_NAME = "gpt-4o-mini"
 
@@ -127,16 +125,29 @@ def handle_question(question: str, file: UploadFile = None):
         f"{question}"
     )
         # Call gpt-4o-mini via AIpipe
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[
-                {"role": "system", "content": "You are a Python data analyst who specializes in data extraction and analysis."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.2
+        # ✅ Call AIpipe REST API instead of OpenAI client
+        response = requests.post(
+            f"{base_url}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": MODEL_NAME,
+                "messages": [
+                    {"role": "system", "content": "You are a Python data analyst who specializes in data extraction and analysis."},
+                    {"role": "user", "content": prompt},
+                    ],
+               # response_format={"type":"json_object"}
+                "temperature": 0.2
+            },
+            timeout=120
         )
-        reply = response.choices[0].message.content
-        #code = response.text.strip("```python").strip("```")
+
+        if response.status_code != 200:
+            return {"error": f"API request failed: {response.status_code}", "details": response.text}
+
+        reply = response.json()["choices"][0]["message"]["content"]
         
         def extract_code(text: str) -> str:
             code_blocks = re.findall(r"```(?:python)?\n(.*?)```", text, re.DOTALL)
