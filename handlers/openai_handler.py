@@ -33,6 +33,7 @@ from handlers.file_handler2 import load_file, summarize_context
 #from handlers.pdf_handler import load_pdf
 import tempfile
 from fastapi import UploadFile
+from typing import List, Optional   
 
 
 load_dotenv()
@@ -59,7 +60,7 @@ def scrape_url(url):
     except Exception as e:
         return f"Error fetching URL: {e}"
 
-def handle_question(question: str, file: UploadFile = None):
+def handle_question(question: str, file: Optional[List[dict]] = None):
     try:
         url = extract_url(question)
         context = ""
