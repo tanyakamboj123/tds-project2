@@ -173,8 +173,9 @@ async def handle_question(request: Request):
         "If a plot is requested , make this chart if asked only:\n"
         "- Use matplotlib\n"
         #"- Save to base64 string as \"data:image/png;base64,...\" and include it in the result array\n"
-        "- Make sure base64 output is under 10,000 characters\n"
+        "- When generating plots, compress and resize the figure so that the base64-encoded output is under 100 KB. Use PIL (Pillow) to downscale and optimize images. Always return only the base64 string (no prefix)\n"
         "- Read the question carefully what is asked then generate the plot.\n\n"
+        
         f"{('[URL]\n' + url_context) if url_context else ''}\n\n"
         f"{('[FILES]\n' + file_context) if file_context else ''}\n"
         "Before numeric operations like .corr(), .plot(), or .astype(), always:\n"
