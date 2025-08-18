@@ -198,6 +198,7 @@ async def handle_question(request: Request):
         
         f"{('[URL]\n' + url_context) if url_context else ''}"
         f"{('[FILES]\n' + file_context) if file_context else ''}"
+        
         "Before numeric operations like .corr(), .plot(), or .astype(), always:\n"
         "- Convert columns using pd.to_numeric(..., errors='coerce'), OR\n"
         "- Use .str.extract(r'(\\d+(?:\\.\\d+)?)') to extract numeric parts from strings like '24RK' or 'T2257844554' if in present in another format.\n"
@@ -211,9 +212,9 @@ async def handle_question(request: Request):
         "- Reduce variability in the answers, use consistent formatting and rounding.\n"
         "- If any error gets , send back that error to llm to solve the question again.\n\n"
         "- take maximum of 3 minutes to answer the question.\n\n"
-        "Strictly read all the instructions mentioned above before solving the question.\n\n"
-        "Now generate Python code to answer:\n\n"
-        f"{question}"
+        "Strictly read all the instructions mentioned above before solving the question."
+        " Now generate Python code to answer:"
+          f"{question}"
     )
         # Call gpt-4o-mini via AIpipe
         # ✅ Call AIpipe REST API instead of OpenAI client
