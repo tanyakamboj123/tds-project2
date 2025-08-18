@@ -32,7 +32,7 @@ from handlers.file_handler2 import load_file, summarize_context
 #from handlers.file_handler import load_file, extract_pdf_text, summarize_dataframes_with_text
 #from handlers.pdf_handler import load_pdf
 import tempfile
-from fastapi import UploadFile
+from fastapi import UploadFile,Request
 from typing import List, Optional   
 
 
@@ -60,21 +60,80 @@ def scrape_url(url):
     except Exception as e:
         return f"Error fetching URL: {e}"
 
-def handle_question(question: str, file: Optional[List[dict]] = None):
+async def handle_question(request: Request):
+    """
+    Unified handler:
+    - Parses multipart form
+    - Gets 'question' or infers from a .txt file
+    - Processes any uploaded files (all of them)
+    - Scrapes URL context if a URL is present in the question
+    - Calls the model, extracts Python code, executes it, returns 'result'
+    """
     try:
+        # 1) Parse form
+        form = await request.form()
+        question: Optional[str] = form.get("question")
+        files: List[UploadFile] = form.getlist("file") if "file" in form else []
+
+        # 2) If no explicit question, try to infer from a .txt file
+        if not question:
+            for f in files:
+                if hasattr(f, "filename") and f.filename and f.filename.lower().endswith(".txt"):
+                    content = await f.read()
+                    await f.seek(0)
+                    question = content.decode("utf-8", errors="ignore").strip()
+                    break
+
+        if not question:
+            return {"error": "No question provided."}
+
+        # 3) URL context (if present in question)
         url = extract_url(question)
-        context = ""
+        url_context = scrape_url(url) if url else ""
 
-        if url:
-            context = scrape_url(url)
-        elif file:
-            with tempfile.NamedTemporaryFile(delete=False) as tmp:
-                tmp.write(file.file.read())
-                tmp_path = tmp.name
+        # 4) File contexts (process ALL files)
+        tmp_paths: List[str] = []
+        file_context_chunks: List[str] = []
 
-            load_result = load_file(tmp_path)
-            context = summarize_context(load_result)
-        prompt = prompt = (
+        try:
+            for f in files:
+                # Write each upload to a temp file
+                data = await f.read()
+                await f.seek(0)
+
+                fd, tmp_path = tempfile.mkstemp(suffix="-" + (f.filename or "upload"))
+                try:
+                    with os.fdopen(fd, "wb") as out:
+                        out.write(data)
+                except Exception:
+                    # If os.fdopen fails, make sure the fd is closed
+                    try:
+                        os.close(fd)
+                    except Exception:
+                        pass
+                    raise
+                tmp_paths.append(tmp_path)
+
+                # Use your generic loader + summarizer
+                try:
+                    load_result = load_file(tmp_path)          # list of dfs, text, image OCR, etc. as your file_handler2 supports
+                    summary = summarize_context(load_result)   # turn into compact text for LLM
+                    if summary:
+                        file_context_chunks.append(summary)
+                except Exception as fe:
+                    file_context_chunks.append(f"[File {f.filename}] Error: {fe}")
+
+            file_context = "\n\n".join(file_context_chunks).strip()
+        finally:
+            # 5) Cleanup temp files
+            for p in tmp_paths:
+                try:
+                    os.remove(p)
+                except Exception:
+                    pass
+
+        # 6) Build prompt
+        prompt = (
         "You are an expert and precise python data analyst.\n\n"
         "Task:\n"
         "- The user will give you a question can be related to url and any type of file.\n"
@@ -116,7 +175,8 @@ def handle_question(question: str, file: Optional[List[dict]] = None):
         #"- Save to base64 string as \"data:image/png;base64,...\" and include it in the result array\n"
         "- Make sure base64 output is under 10,000 characters\n"
         "- Read the question carefully what is asked then generate the plot.\n\n"
-        f"Data from webpage:\n{context if context else ''}\n\n"
+        f"{('[URL]\n' + url_context) if url_context else ''}\n\n"
+        f"{('[FILES]\n' + file_context) if file_context else ''}\n"
         "Before numeric operations like .corr(), .plot(), or .astype(), always:\n"
         "- Convert columns using pd.to_numeric(..., errors='coerce'), OR\n"
         "- Use .str.extract(r'(\\d+(?:\\.\\d+)?)') to extract numeric parts from strings like '24RK' or 'T2257844554' if in present in another format.\n"
