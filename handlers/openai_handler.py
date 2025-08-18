@@ -40,7 +40,7 @@ load_dotenv()
 api_key = os.getenv("AIPIPE_TOKEN")
 base_url = "https://aipipe.org/openai/v1"
 
-MODEL_NAME = "gpt-4.1-nano"
+MODEL_NAME = "gpt-4.1"
 
 def extract_url(text):
     match = re.search(r'(https?://[^\s]+)', text)
