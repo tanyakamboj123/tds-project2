@@ -29,6 +29,7 @@ async def home():
 
 
 # app.py (POST handler)
+@app.post("/")
 @app.post("/api/")
 async def analyze(request: Request):
     try:
