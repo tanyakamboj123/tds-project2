@@ -33,7 +33,11 @@ from handlers.file_handler2 import load_file, summarize_context
 #from handlers.pdf_handler import load_pdf
 import tempfile
 from fastapi import UploadFile,Request
-from typing import List, Optional   
+from typing import List, Optional 
+import base64
+from io import BytesIO
+from PIL import Image  # pip install pillow
+  
 
 
 load_dotenv()
@@ -59,6 +63,21 @@ def scrape_url(url):
 
     except Exception as e:
         return f"Error fetching URL: {e}"
+    
+    
+def fig_to_base64_png(fig, max_size_kb=100, dpi_primary=80, dpi_fallback=60):
+    """Save a Matplotlib figure to a base64 PNG under `max_size_kb`."""
+    buf = BytesIO()
+    fig.savefig(buf, format="png", dpi=dpi_primary, bbox_inches="tight")
+    data = buf.getvalue()
+
+    if len(data) > max_size_kb * 1024:
+        buf = BytesIO()
+        fig.savefig(buf, format="png", dpi=dpi_fallback, bbox_inches="tight")
+        data = buf.getvalue()
+
+    return "data:image/png;base64," + base64.b64encode(data).decode("utf-8")
+
 
 async def handle_question(request: Request):
     """
@@ -172,12 +191,13 @@ async def handle_question(request: Request):
 
         "If a plot is requested , make this chart if asked only:\n"
         "- Use matplotlib\n"
+        "- If you create any Matplotlib figure, always convert it with fig_to_base64_png(fig) so the base64 PNG is < 100 kB."
         #"- Save to base64 string as \"data:image/png;base64,...\" and include it in the result array\n"
         "- When generating plots, compress and resize the figure so that the base64-encoded output is under 100 KB. Use PIL (Pillow) to downscale and optimize images. Always return only the base64 string (no prefix)\n"
         "- Read the question carefully what is asked then generate the plot.\n\n"
         
-        f"{('[URL]\n' + url_context) if url_context else ''}\n\n"
-        f"{('[FILES]\n' + file_context) if file_context else ''}\n"
+        f"{('[URL]\n' + url_context) if url_context else ''}"
+        f"{('[FILES]\n' + file_context) if file_context else ''}"
         "Before numeric operations like .corr(), .plot(), or .astype(), always:\n"
         "- Convert columns using pd.to_numeric(..., errors='coerce'), OR\n"
         "- Use .str.extract(r'(\\d+(?:\\.\\d+)?)') to extract numeric parts from strings like '24RK' or 'T2257844554' if in present in another format.\n"
