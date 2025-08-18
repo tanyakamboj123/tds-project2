@@ -39,7 +39,7 @@ pypdf==5.9.0
 pypdfium2==4.30.0
 pytesseract==0.3.13
 
-
+python-multipart==0.0.20
 
 requests==2.32.4
 requests-toolbelt==1.0.0
@@ -48,7 +48,7 @@ requests-toolbelt==1.0.0
 
 scipy==1.16.1
 seaborn==0.13.2
-setuptools==80.9.0
+#setuptools==80.9.0
 
 
 SQLAlchemy==2.0.43
